@@ -15,8 +15,7 @@ const app = express();
 const admin = require("firebase-admin");
 const authRoutes = require("./routes/Auth");
 
-const serviceAccount = require("./config/abeliasun-firebase-adminsdk-2mpxl-48e16b1656.json");
-
+const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });

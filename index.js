@@ -15,8 +15,7 @@ const emailRoutes = require("./routes/Email");
 const app = express();
 const admin = require("firebase-admin");
 const authRoutes = require("./routes/Auth");
-
-console.log("🔍 DATABASE_URL utilisé :", process.env.DATABASE_URL);
+console.log("🔥 Vérification ENV DATABASE_URL :", process.env.DATABASE_URL);
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 admin.initializeApp({

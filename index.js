@@ -1,6 +1,6 @@
 require("dotenv").config(); // Charger les variables d'environnement
-const cors = require("cors");
 const express = require("express");
+const cors = require("cors");
 const bodyParser = require("body-parser");
 const sequelize = require("./config/database");
 const Customer = require("./models/Customer");
@@ -16,19 +16,13 @@ const app = express();
 const admin = require("firebase-admin");
 const authRoutes = require("./routes/Auth");
 
-<<<<<<< HEAD
 const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-=======
-const serviceAccount = require("./config/abeliasun-firebase-adminsdk-2mpxl-48e16b1656.json");
-
->>>>>>> df234d9 (Clean backend version)
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
 console.log("Firebase Admin SDK initialisé !");
 app.use(cors());
-
 // Middleware
 app.use(bodyParser.json());
 

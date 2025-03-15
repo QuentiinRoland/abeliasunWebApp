@@ -1,13 +1,44 @@
 abeliasun-backend/config/abeliasun-firebase-adminsdk-2mpxl-48e16b1656.json
-.env
 frontend/
 config/abeliasun-firebase-adminsdk-2mpxl-4705e4a3d8.json
-node_modules/
-# Node.js
-node_modules/
 .cache/
 *.pack
 config/abeliasun-firebase-adminsdk-2mpxl-48e16b1656.json
+
+# Node modules
+node_modules/
+
+# Environment variables
 .env
-frontend/
-config/abeliasun-firebase-adminsdk-2mpxl-4705e4a3d8.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+.npm
+.pnp
+.pnp.js
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS artifacts
+.DS_Store
+Thumbs.db

@@ -1,4 +1,5 @@
 require("dotenv").config(); // Charger les variables d'environnement
+const cors = require("cors");
 const express = require("express");
 const bodyParser = require("body-parser");
 const sequelize = require("./config/database");
@@ -26,6 +27,7 @@ admin.initializeApp({
 });
 
 console.log("Firebase Admin SDK initialisé !");
+app.use(cors());
 
 // Middleware
 app.use(bodyParser.json());

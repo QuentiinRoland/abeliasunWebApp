@@ -16,6 +16,8 @@ const app = express();
 const admin = require("firebase-admin");
 const authRoutes = require("./routes/Auth");
 
+console.log("🔍 DATABASE_URL utilisé :", process.env.DATABASE_URL);
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),

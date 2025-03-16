@@ -1,7 +1,6 @@
 const express = require("express");
 const Customer = require("../models/Customer");
 const router = express.Router();
-const customerController = require('../controllers/customerController');
 
 router.post("/", async (req, res) => {
   try {
@@ -38,7 +37,67 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post('/import', customerController.importCustomers);
+router.post('/import', async (req, res) => {
+  try {
+    const { customers } = req.body;
+    
+    if (!customers || !Array.isArray(customers) || customers.length === 0) {
+      return res.status(400).json({ success: false, message: 'Aucune donnée client valide fournie' });
+    }
+    
+    const validCustomers = customers.filter(customer => 
+      customer.name && customer.email && customer.phone && customer.street
+    );
+    
+    if (validCustomers.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Aucun client valide trouvé. Assurez-vous que tous les champs obligatoires sont remplis.' 
+      });
+    }
+    
+    const emails = validCustomers.map(c => c.email);
+    const uniqueEmails = new Set(emails);
+    
+    if (emails.length !== uniqueEmails.size) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Des adresses email en double ont été détectées. Chaque client doit avoir une adresse email unique.' 
+      });
+    }
+    
+    const existingEmails = await Customer.findAll({
+      where: {
+        email: emails
+      },
+      attributes: ['email']
+    });
+    
+    if (existingEmails.length > 0) {
+      const duplicateEmails = existingEmails.map(e => e.email);
+      return res.status(400).json({ 
+        success: false, 
+        message: `Les adresses email suivantes existent déjà: ${duplicateEmails.join(', ')}` 
+      });
+    }
+    
+    const createdCustomers = await Customer.bulkCreate(validCustomers);
+    
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Importation réussie', 
+      importedCount: createdCustomers.length 
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'importation des clients:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de l\'importation des clients', 
+      error: error.message 
+    });
+  }
+});
 
 
 router.get("/:id", async (req, res) => {

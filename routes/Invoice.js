@@ -7,7 +7,6 @@ const Service = require("../models/Service");
 const SubService = require("../models/SubService");
 const emailController = require('../controllers/emailControllers');
 
-
 const PDFDocument = require("pdfkit");
 
 const router = express.Router();
@@ -326,7 +325,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-router.post('/invoices/:id/send-email', 
+router.post('/:id/send-email', 
   emailController.handleFileUpload,
   emailController.sendInvoiceByEmail
 );

@@ -1,15 +1,14 @@
 const express = require("express");
 const Customer = require("../models/Customer");
 const router = express.Router();
+const customerController = require('../controllers/customerController');
 
 router.post("/", async (req, res) => {
   try {
-    // Validation des données
     if (!req.body.name || !req.body.email || !req.body.phone) {
       return res.status(400).json({ error: "Champs obligatoires manquants" });
     }
 
-    // S'assurer que additionalEmail est un tableau
     const customerData = {
       ...req.body,
       additionalEmail: Array.isArray(req.body.additionalEmail)
@@ -38,6 +37,9 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.post('/import', customerController.importCustomers);
+
 
 router.get("/:id", async (req, res) => {
   try {
@@ -88,5 +90,7 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 module.exports = router;

@@ -4,15 +4,13 @@ const API_URL = "https://abeliasun-backend-5c08804f47f8.herokuapp.com";
 
 export const getCustomers = async () => {
   try {
-    console.log("🔍 Requête envoyée à :", `${API_URL}/api/customers`); // Debug URL
+    console.log("🔍 Requête envoyée à :", `${API_URL}/api/customers`);
     const response = await axios.get(`${API_URL}/api/customers`);
-    console.log("🔍 Réponse brute reçue :", response); // Debug Response
-
-    if (!response.ok) throw new Error("Erreur lors du chargement des clients");
-
-    const data = await response.json();
-    console.log("🔍 Données reçues :", data);
-    return data;
+    console.log("🔍 Réponse brute reçue :", response); 
+    console.log("dousdsds")
+    // Correction : Utiliser directement response.data 
+    console.log("🔍 Données reçues :", response.data);
+    return response.data;
   } catch (error) {
     console.error("❌ Erreur API :", error);
     return [];

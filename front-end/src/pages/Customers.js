@@ -5,13 +5,15 @@ import {
   deleteCustomers,
 } from "../services/customerService";
 import { CustomerDetailsModal } from "../components/Modal/customerDetails";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaFileExcel } from "react-icons/fa";
+import { ExcelImportModal } from "../components/ExcelImport"; // Importation du nouveau composant
 
 export const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false); // État pour la modal d'import
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -20,6 +22,8 @@ export const Customers = () => {
   const [postalCode, setPostalCode] = useState("");
   const [additionalEmail, setAdditionalEmail] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [importSuccess, setImportSuccess] = useState(false); // État pour notifier l'importation réussie
+  const [importedCount, setImportedCount] = useState(0); // Compteur de clients importés
 
   useEffect(() => {
     refreshCustomer();
@@ -30,6 +34,7 @@ export const Customers = () => {
     setCustomers(data);
     setFilteredCustomers(data);
   };
+  
   useEffect(() => {
     const fetchCustomers = async () => {
       console.log("Fetching customers...");
@@ -40,6 +45,16 @@ export const Customers = () => {
     };
     fetchCustomers();
   }, []);
+
+  // Réinitialiser l'état d'importation après 5 secondes
+  useEffect(() => {
+    if (importSuccess) {
+      const timer = setTimeout(() => {
+        setImportSuccess(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [importSuccess]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -96,10 +111,28 @@ export const Customers = () => {
     await refreshCustomer();
   };
 
+  // Gestionnaire pour l'importation réussie
+  const handleImportSuccess = (count) => {
+    setImportedCount(count);
+    setImportSuccess(true);
+    refreshCustomer(); // Rafraîchir la liste des clients
+  };
+
   return (
     <div className="bg-gray-100 p-4 min-h-screen">
       <div className="container mx-auto p-6">
         <h1 className="text-4xl font-bold mb-6">Liste des clients</h1>
+
+        {importSuccess && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
+            <span>
+              <strong>Importation réussie!</strong> {importedCount} clients ont été importés avec succès.
+            </span>
+            <button onClick={() => setImportSuccess(false)} className="text-green-700">
+              <FaTrash size={18} />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 flex items-center">
@@ -200,7 +233,7 @@ export const Customers = () => {
         )}
 
         {showModal && (
-          <div className="fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
               <h2 className="text-xl font-bold mb-4">Ajouter un client</h2>
               <input
@@ -265,12 +298,24 @@ export const Customers = () => {
           </div>
         )}
 
+        {/* Bouton d'importation Excel */}
         <div className="flex justify-end mt-6">
-          <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-sm hover:bg-green-700">
+          <button 
+            className="bg-green-600 text-white px-6 py-2 rounded-full shadow-sm hover:bg-green-700 flex items-center gap-2"
+            onClick={() => setShowImportModal(true)}
+          >
+            <FaFileExcel />
             Importer un fichier Excel
           </button>
         </div>
+
+        {/* Modal d'importation Excel */}
+        <ExcelImportModal 
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={handleImportSuccess}
+        />
       </div>
     </div>
   );
-};
+}

@@ -1,7 +1,7 @@
 const express = require("express");
 const Customer = require("../models/Customer");
 const router = express.Router();
-const customerController = require('../controllers/customerControllers');
+const customerController = require('../controllers/customerController');
 
 router.post("/", async (req, res) => {
   try {

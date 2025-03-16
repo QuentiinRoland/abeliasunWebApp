@@ -5,7 +5,7 @@ const Employee = require("../models/Employee"); // Assure-toi que le chemin est 
 const InvoiceEmployee = require("../models/InvoiceEmployee"); // Si utilisé pour associer les employés
 const Service = require("../models/Service");
 const SubService = require("../models/SubService");
-const emailController = require('../controllers/emailControllers');
+const emailController = require('../controllers/emailController');
 
 const PDFDocument = require("pdfkit");
 

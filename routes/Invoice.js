@@ -5,8 +5,10 @@ const Employee = require("../models/Employee"); // Assure-toi que le chemin est 
 const InvoiceEmployee = require("../models/InvoiceEmployee"); // Si utilisé pour associer les employés
 const Service = require("../models/Service");
 const SubService = require("../models/SubService");
-const emailController = require('../controllers/emailController');
-
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const PDFDocument = require("pdfkit");
 
 const router = express.Router();
@@ -325,9 +327,72 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-router.post('/:id/send-email', 
-  emailController.handleFileUpload,
-  emailController.sendInvoiceByEmail
-);
+const upload = multer({
+  dest: 'temp/uploads/'
+});
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.example.com',
+  port: process.env.SMTP_PORT || 587,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER || 'user@example.com',
+    pass: process.env.SMTP_PASS || 'password'
+  }
+});
+
+router.post('/:id/send-email', upload.single('pdfFile'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Adresse email requise' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'Fichier PDF requis' });
+    }
+    
+    const invoice = await Invoice.findByPk(id);
+    if (!invoice) {
+      return res.status(404).json({ message: 'Facture non trouvée' });
+    }
+    
+
+    const pdfFilePath = req.file.path;
+    
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'info@abeliasun.be',
+      to: email,
+      subject: `Prestation n°${invoice.numberInvoice}`,
+      text: `Veuillez trouver ci-joint la prestation n°${invoice.numberInvoice}.`,
+      html: `
+        <h2>Prestation n°${invoice.numberInvoice}</h2>
+        <p>Bonjour,</p>
+        <p>Veuillez trouver ci-joint la prestation du ${new Date(invoice.date).toLocaleDateString('fr-FR')}.</p>
+        <p>Merci pour votre confiance.</p>
+        <p>Cordialement,</p>
+        <p>L'équipe Abeliasun</p>
+      `,
+      attachments: [
+        {
+          filename: `prestation_${invoice.numberInvoice}.pdf`,
+          path: pdfFilePath
+        }
+      ]
+    });
+    
+    fs.unlink(pdfFilePath, (err) => {
+      if (err) console.error('Erreur lors de la suppression du fichier temporaire:', err);
+    });
+    
+    res.json({ success: true, message: 'PDF envoyé avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi du PDF par email:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'envoi du PDF par email' });
+  }
+});
 
 module.exports = router;

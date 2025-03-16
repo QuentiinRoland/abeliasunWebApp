@@ -5,6 +5,8 @@ const Employee = require("../models/Employee"); // Assure-toi que le chemin est 
 const InvoiceEmployee = require("../models/InvoiceEmployee"); // Si utilisé pour associer les employés
 const Service = require("../models/Service");
 const SubService = require("../models/SubService");
+const emailController = require('../controllers/emailControllers');
+
 
 const PDFDocument = require("pdfkit");
 
@@ -323,5 +325,10 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.post('/invoices/:id/send-email', 
+  emailController.handleFileUpload,
+  emailController.sendInvoiceByEmail
+);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 // src/services/servicesService.js
 import axios from "axios";
+import { generatePDFBlob } from "../components/pdfReport";
 const API_URL = "https://abeliasun-backend-5c08804f47f8.herokuapp.com";
 
 /**
@@ -95,3 +96,31 @@ export const getServiceById = async (id) => {
     throw error;
   }
 };
+
+export const sendInvoicePdf = async (invoice, email) => {
+    try {
+      // Générer le PDF côté client avec React-PDF
+      const pdfBlob = await generatePDFBlob(invoice);
+      
+      // Créer un FormData pour envoyer le fichier
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('pdfFile', pdfBlob, `prestation_${invoice.numberInvoice || 'sans_numero'}.pdf`);
+      
+      // Envoyer la requête au serveur
+      const response = await axios.post(
+        `${baseURL}/invoices/${invoice.id}/send-email`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi du PDF par email :', error);
+      throw error;
+    }
+  };

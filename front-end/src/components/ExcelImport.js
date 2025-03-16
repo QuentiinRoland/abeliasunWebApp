@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { FaFileExcel, FaTimes, FaCheck } from 'react-icons/fa';
 
-// Service pour importer les clients
 const importCustomersFromExcel = async (customers) => {
   try {
-    const response = await fetch('/api/customers/import', {
+    const response = await fetch('https://abeliasun-backend-5c08804f47f8.herokuapp.com/api/customers/import', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +39,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
   const [error, setError] = useState(null);
   const [importStats, setImportStats] = useState(null);
 
-  // Gestion du changement de fichier
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -53,23 +51,18 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
         const data = new Uint8Array(event.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         
-        // Récupérer la première feuille
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convertir en JSON
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         if (jsonData.length > 0) {
-          // Récupérer les en-têtes (première ligne)
           const excelHeaders = jsonData[0];
           setHeaders(excelHeaders);
           
-          // Prévisualiser quelques lignes
-          const previewData = jsonData.slice(1, Math.min(6, jsonData.length)); // 5 premières lignes après les en-têtes
+          const previewData = jsonData.slice(1, Math.min(6, jsonData.length));
           setPreview(previewData);
 
-          // Tentative de mapping automatique
           const autoMapping = {};
           excelHeaders.forEach((header, index) => {
             const lowerHeader = header.toLowerCase();
@@ -101,7 +94,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     reader.readAsArrayBuffer(selectedFile);
   };
 
-  // Gestion du changement de mapping
   const handleMappingChange = (customerField, excelColumn) => {
     setMappings({
       ...mappings,
@@ -109,7 +101,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     });
   };
 
-  // Préparation des données
   const prepareData = () => {
     if (!file) return;
     setLoading(true);
@@ -124,24 +115,19 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convertir en JSON avec les en-têtes
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
         
-        // Transformer les données selon le mapping
         const mappedCustomers = jsonData.map(row => {
           const customer = {};
           
-          // Pour chaque champ du modèle Customer
           Object.keys(mappings).forEach(field => {
             const excelColumn = mappings[field];
             
             if (excelColumn && row[excelColumn] !== undefined) {
               if (field === 'additionalEmail') {
-                // Traiter le champ additionalEmail comme un tableau JSON
                 const emails = row[excelColumn] ? String(row[excelColumn]).split(',').map(email => email.trim()) : [];
                 customer[field] = emails;
               } else if (field === 'postalCode') {
-                // Convertir le code postal en nombre
                 customer[field] = row[excelColumn] ? parseInt(row[excelColumn], 10) : null;
               } else {
                 customer[field] = row[excelColumn];
@@ -152,7 +138,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
           return customer;
         });
         
-        // Filtrer les clients valides (avec les champs obligatoires)
         const validCustomers = mappedCustomers.filter(customer => 
           customer.name && customer.email && customer.phone && customer.street
         );
@@ -175,7 +160,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     reader.readAsArrayBuffer(file);
   };
 
-  // Importer les données
   const importData = async () => {
     setLoading(true);
     setError(null);
@@ -185,7 +169,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
       
       if (result.success) {
         setStep(4);
-        // Notifier le parent du succès
         if (onImportSuccess) {
           onImportSuccess(result.importedCount || customers.length);
         }
@@ -199,7 +182,6 @@ export const ExcelImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     }
   };
 
-  // Réinitialiser le formulaire
   const resetForm = () => {
     setFile(null);
     setHeaders([]);

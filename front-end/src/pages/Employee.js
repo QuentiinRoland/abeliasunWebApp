@@ -1,34 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { addEmployee, getEmployee, deleteEmployee as removeEmployee, updateEmployee } from "../services/employeeService";
+import EmployeeDetailsModal from "../components/Modal/employeeDetailsModal";
+import { FaTrash } from "react-icons/fa";
 
 const Employee = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
-  const [editMode, setEditMode] = useState(false);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   useEffect(() => {
-    fetchEmployees();
+    refreshEmployee();
   }, []);
 
-  const fetchEmployees = async () => {
-    try {
+  const refreshEmployee = async () => {
+    const data = await getEmployee();
+    setEmployees(data);
+  };
+  
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      console.log("Fetching employees...");
       setLoading(true);
       const data = await getEmployee();
+      console.log("Employees fetched:", data);
       setEmployees(data || []);
-    } catch (error) {
-      console.error("Erreur lors du chargement des employés:", error);
-      setEmployees([]);
-    } finally {
       setLoading(false);
-    }
-  };
+    };
+    fetchEmployees();
+  }, []);
 
   const handleDeleteEmployee = async (employeeId) => {
     try {
@@ -36,68 +39,42 @@ const Employee = () => {
       setEmployees((prevEmployees) => 
         prevEmployees.filter((employee) => employee.id !== employeeId)
       );
+      await refreshEmployee();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  // Modes distincts pour éviter les confusions
-  const handleAddNew = () => {
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-    });
-    setEditMode(false);
-    setSelectedEmployeeId(null);
-    setShowModal(true);
-  };
-
-  const handleEdit = (employee) => {
-    if (!employee) return;
-    
-    setFormData({
-      name: employee.name || "",
-      email: employee.email || "",
-      phone: employee.phone || "",
-    });
-    setEditMode(true);
-    setSelectedEmployeeId(employee.id);
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleAddEmployee = async () => {
     try {
-      if (editMode && selectedEmployeeId) {
-        const updatedEmployee = await updateEmployee(selectedEmployeeId, formData);
-        setEmployees(
-          employees.map((emp) => 
-            emp.id === selectedEmployeeId ? updatedEmployee : emp
-          )
-        );
-      } else {
-        const newEmployee = await addEmployee(formData);
-        setEmployees([...employees, newEmployee]);
+      const employeeData = {
+        name,
+        email,
+        phone,
+      };
+      console.log("Adding employee:", employeeData);
+      const newEmployee = await addEmployee(employeeData);
+      if (newEmployee) {
+        console.log("New employee added:", newEmployee);
+        setEmployees((prevEmployees) => [...prevEmployees, newEmployee]);
+        await refreshEmployee();
       }
-      
       setShowModal(false);
+      setName("");
+      setEmail("");
+      setPhone("");
     } catch (error) {
-      console.error(`Impossible de ${editMode ? 'modifier' : 'ajouter'} l'employé`, error);
+      console.error("Erreur lors de l'ajout de l'employé:", error);
     }
+  };
+
+  const handleShowDetails = (employee) => {
+    setSelectedEmployee(employee);
+  };
+
+  const handleCloseModal = async () => {
+    setSelectedEmployee(null);
+    await refreshEmployee();
   };
  
   if (loading) {
@@ -109,136 +86,138 @@ const Employee = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Liste des employés</h2>
-        <button 
-          onClick={handleAddNew} 
-          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
-        >
-          Ajouter un employé
-        </button>
-      </div>
+    <div className="bg-gray-100 p-4 min-h-screen">
+      <div className="container mx-auto p-6">
+        <h1 className="text-4xl font-bold mb-6">Liste des employés</h1>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editMode ? "Modifier l'employé" : "Ajouter un employé"}
-              </h2>
-              <button 
-                onClick={handleCloseModal} 
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
-                  Nom
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-              </div>
-              
-              <div className="mb-6">
-                <label htmlFor="phone" className="block text-gray-700 text-sm font-bold mb-2">
-                  Téléphone
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-              </div>
-              
-              <div className="flex justify-end gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 flex items-center">
+            <h2 className="text-lg font-semibold mr-2">Total employés :</h2>
+            <p className="text-3xl font-bold text-green-700">
+              {employees.length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-lg shadow-sm px-6 py-4">
+          <div className="flex gap-4 items-center">
+            <input
+              type="text"
+              placeholder="Rechercher un employé..."
+              className="border border-gray-300 rounded-lg px-4 py-2 flex-grow bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+            <button
+              className="bg-green-600 text-white px-6 py-2 rounded-full shadow-sm hover:bg-green-700 transition duration-300"
+              onClick={() => setShowModal(true)}
+            >
+              Ajouter un employé
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <table className="min-w-full table-auto bg-white border rounded-lg overflow-hidden shadow-lg">
+            <thead className="bg-gray-200">
+              <tr>
+                {["Nom", "Email", "Téléphone", "Actions"].map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-2 text-left text-sm font-semibold border-b"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {employees.length > 0 ? (
+                employees.map((employee, index) => (
+                  <tr
+                    key={employee.id}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                  >
+                    <td className="px-4 py-2">{employee.name}</td>
+                    <td className="px-4 py-2">{employee.email}</td>
+                    <td className="px-4 py-2">{employee.phone}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex space-x-2">
+                        <button
+                          className="bg-green-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition"
+                          onClick={() => handleShowDetails(employee)}
+                        >
+                          Détail
+                        </button>
+                        <button
+                          className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-700 transition"
+                          onClick={() => handleDeleteEmployee(employee.id)}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center py-4 text-gray-500">
+                    Aucun employé trouvé.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {selectedEmployee && (
+          <EmployeeDetailsModal
+            employee={selectedEmployee}
+            onClose={handleCloseModal}
+          />
+        )}
+
+        {showModal && (
+          <div className="fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+              <h2 className="text-xl font-bold mb-4">Ajouter un employé</h2>
+              <input
+                type="text"
+                placeholder="Nom de l'employé"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 mb-4 w-full"
+              />
+              <input
+                type="tel"
+                placeholder="Téléphone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 mb-4 w-full"
+              />
+              <input
+                type="email"
+                placeholder="Email de l'employé"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 mb-4 w-full"
+              />
+              <div className="flex justify-end space-x-4">
                 <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded transition-colors"
+                  className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600"
+                  onClick={handleAddEmployee}
+                >
+                  Confirmer
+                </button>
+                <button
+                  className="bg-gray-300 px-4 py-2 rounded-full hover:bg-gray-400"
+                  onClick={() => setShowModal(false)}
                 >
                   Annuler
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
-                >
-                  {editMode ? "Modifier" : "Ajouter"}
-                </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
-
-      {employees.length === 0 ? (
-        <div className="bg-white rounded shadow p-6 text-center">
-          <p className="text-gray-500 italic">Aucun employé trouvé</p>
-        </div>
-      ) : (
-        <div className="space-y-3 mt-4">
-          <div className="grid grid-cols-12 gap-4 font-bold bg-gray-100 p-3 rounded">
-            <div className="col-span-3">Nom</div>
-            <div className="col-span-4">Email</div>
-            <div className="col-span-3">Téléphone</div>
-            <div className="col-span-2">Actions</div>
-          </div>
-          
-          {employees
-            .filter(employee => employee)
-            .map((employee) => (
-              <div key={employee.id} className="grid grid-cols-12 gap-4 items-center p-3 bg-white rounded shadow">
-                <div className="col-span-3 font-medium">{employee.name}</div>
-                <div className="col-span-4 overflow-hidden overflow-ellipsis">{employee.email}</div>
-                <div className="col-span-3">{employee.phone}</div>
-                <div className="col-span-2 flex space-x-2">
-                  <button 
-                    onClick={() => handleEdit(employee)}
-                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
-                  >
-                    Modifier
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteEmployee(employee.id)}
-                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

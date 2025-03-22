@@ -138,8 +138,8 @@ router.get("/", async (req, res) => {
       include: [
         {
           model: Customer,
-          as: "customer", // Utilise l'alias défini dans le modèle
-          attributes: ["name", "email"], // Les champs que tu veux récupérer
+          as: "customer",
+          attributes: ["name", "email", "phone", "street", "city", "postalCode"],
         },
         {
           model: Employee,
@@ -153,7 +153,7 @@ router.get("/", async (req, res) => {
           model: Service,
           as: "associatedServices",
           through: {
-            attributes: [], // On spécifie juste les attributs qu'on veut de la table de jointure
+            attributes: [],
           },
           attributes: ["name", "id"],
         },
@@ -179,7 +179,7 @@ router.get("/:id", async (req, res) => {
   try {
     const invoice = await Invoice.findByPk(req.params.id, {
       include: [
-        { model: Customer, as: "customer", attributes: ["name", "email"] },
+        { model: Customer, as: "customer", attributes: ["name", "email", "phone", "street", "city", "postalCode"], },
         {
           model: Employee,
           as: "employees",
@@ -265,9 +265,7 @@ router.put("/:id", async (req, res) => {
         "Mise à jour des heures par employé :",
         updatedData.employeeHours
       );
-      // Supprimer les anciennes heures
       await InvoiceEmployee.destroy({ where: { InvoiceId: id } });
-      // Ajouter les nouvelles heures
       for (const empHours of updatedData.employeeHours) {
         await InvoiceEmployee.create({
           InvoiceId: id,
@@ -280,7 +278,7 @@ router.put("/:id", async (req, res) => {
     // Récupérer la facture mise à jour avec ses relations
     const updatedInvoice = await Invoice.findByPk(id, {
       include: [
-        { model: Customer, as: "customer", attributes: ["name", "email"] },
+        { model: Customer, as: "customer", attributes: ["name", "email", "phone", "street", "city", "postalCode"], },
         {
           model: Employee,
           as: "employees",

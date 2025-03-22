@@ -38,6 +38,13 @@ const Prestations = () => {
     try {
       setLoading(true);
       const data = await getServices();
+      console.log("DONNÉES COMPLÈTES DES FACTURES:", JSON.stringify(data, null, 2));
+      // Vérifier spécifiquement la structure du customer dans les factures
+      data.forEach(invoice => {
+        if (invoice.customer) {
+          console.log(`CUSTOMER DATA POUR FACTURE ${invoice.id}:`, invoice.customer);
+        }
+      });
       setInvoices(data);
       setError(null);
     } catch (err) {
@@ -623,9 +630,6 @@ const Prestations = () => {
               )}
               {selectedInvoice.customer.email && (
                 <p className="mb-2"><span className="font-semibold">Email:</span> {selectedInvoice.customer.email}</p>
-              )}
-              {selectedInvoice.customer.siret && (
-                <p className="mb-2"><span className="font-semibold">SIRET:</span> {selectedInvoice.customer.siret}</p>
               )}
             </div>
           ) : (

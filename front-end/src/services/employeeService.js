@@ -12,7 +12,7 @@ export const getEmployee = async () => {
 
 export const addEmployee = async (data) => {
     try {
-        const response = await axios.post(`${API_URL}/api/employees`)
+        const response = await axios.post(`${API_URL}/api/employees`, data)
         return response.data
     } catch (error) {
         console.error("Erreur api ajout d'un employé", error)
@@ -28,9 +28,9 @@ export const deleteEmployee = async (id) => {
     }
 }
 
-export const updateEmployee = async (id) => {
+export const updateEmployee = async (id, data) => {
     try {
-        const response = await axios.put(`${API_URL}/api/employees/${id}`)
+        const response = await axios.put(`${API_URL}/api/employees/${id}`, data)
         return response.data
     } catch (error) {
         console.error("Impossible de mettre à jour un employé", error)

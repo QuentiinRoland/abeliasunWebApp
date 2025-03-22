@@ -3,6 +3,7 @@ import { getServices, addService, deleteService, updateService } from "../servic
 import PrestationPDF, { PrestationPDFDownload } from "../components/pdfReport";
 import { PDFDownloadLink, BlobProvider } from "@react-pdf/renderer";
 import { createRoot } from 'react-dom/client';
+import { getCustomers } from "../services/customerService";
 
 const Prestations = () => {
   const [invoices, setInvoices] = useState([]);
@@ -14,6 +15,9 @@ const Prestations = () => {
   const [emailTo, setEmailTo] = useState("");
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customers, setCustomers] = useState([])
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().substring(0, 10),
     numberInvoice: "",
@@ -27,6 +31,7 @@ const Prestations = () => {
 
   useEffect(() => {
     fetchInvoices();
+    fetchCustomers()
   }, []);
 
   const fetchInvoices = async () => {
@@ -42,6 +47,20 @@ const Prestations = () => {
       setLoading(false);
     }
   };
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      const data = await getCustomers();
+      setCustomers(data)
+      setError(null)
+    } catch (error) {
+      setError("Impossible de charger les clients")
+      console.error("Erreur lors du chargement des clients", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleAddInvoice = async (e) => {
     e.preventDefault();
@@ -125,6 +144,22 @@ const Prestations = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleCustomerSelect = (e) => {
+    const clientId = e.target.value;
+
+    setFormData({
+      ...formData,
+      customerId : clientId
+    })
+
+    if(clientId) {
+      const selectedCustomers = customers.find(c => c.id.toString() === clientId);
+      setSelectedCustomer(selectedCustomers)
+    } else {
+      setSelectedCustomer(null)
+    }
+  }
+
   const handleMultiSelectChange = (e) => {
     const { name, options } = e.target;
     const selectedValues = Array.from(options)
@@ -134,20 +169,76 @@ const Prestations = () => {
     setFormData({ ...formData, [name]: selectedValues });
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const reader = new FileReader();
-
-    files.forEach(file => {
-      reader.onloadend = () => {
-        setFormData(prevData => ({
-          ...prevData,
-          pictures: [...prevData.pictures, reader.result]
-        }));
+  const compressImage = (base64Image, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Image;
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        
+        resolve(compressedBase64);
       };
-      reader.readAsDataURL(file);
     });
   };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+
+    const fileReadPromises = []
+
+    files.forEach(file => {
+      const promise = new Promise((resolve) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          resolve(reader.result)
+        }
+
+        reader.readAsDataURL(file);
+        
+      });
+      fileReadPromises.push(promise)
+    })
+
+    const rawPictures = await Promise.all(fileReadPromises)
+
+    const compressionPromises = rawPictures.map(imageData => 
+      compressImage(imageData, 800, 800, 0.6) // Ajustez ces valeurs selon vos besoins
+    );
+
+    const compressedPictures = await Promise.all(compressionPromises);
+
+
+    setFormData(prevData => ({
+      ...prevData,
+      pictures: [...prevData.pictures, ...compressedPictures]
+    }));
+  };
+
 
   const handleTaglineUpload = (e) => {
     const file = e.target.files[0];
@@ -231,7 +322,6 @@ const Prestations = () => {
     }
   };
 
-  // Format de date pour l'affichage
   const formatDate = (dateString) => {
     const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('fr-FR', options);
@@ -279,7 +369,6 @@ const Prestations = () => {
         </button>
       </div>
 
-      {/* Formulaire d'ajout/édition */}
       {showForm && (
         <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-6">
           <h2 className="text-2xl font-semibold mb-4">{selectedInvoice ? "Modifier la prestation" : "Ajouter une prestation"}</h2>
@@ -295,7 +384,7 @@ const Prestations = () => {
                 name="date"
                 value={formData.date}
                 onChange={handleInputChange}
-                required
+                requiredzz
               />
             </div>
             
@@ -316,17 +405,30 @@ const Prestations = () => {
             
             <div className="mb-6">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="customerId">
-                ID Client
+                Client
               </label>
-              <input
+              <select
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 type="number"
                 id="customerId"
                 name="customerId"
                 value={formData.customerId}
-                onChange={handleInputChange}
+                onChange={handleCustomerSelect}
                 required
-              />
+              >
+                <option value="">Séléctionnez un client</option>
+                  {customers.map(customer => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                  ))}
+              </select>
+              {selectedCustomer && (
+                 <div className="mb-6 p-4 bg-gray-100 rounded">
+                    <h3 className="font-bold text-lg mb-2">Informations du client</h3>
+                    <p><span className="font-semibold">Nom:</span> {selectedCustomer.name}</p>
+                 </div>
+              )}
             </div>
             
             <div className="mb-4">
@@ -341,7 +443,6 @@ const Prestations = () => {
                 value={formData.serviceIds}
                 onChange={handleMultiSelectChange}
               >
-                {/* Options pour les services */}
                 <option value="1">Entretien</option>
                 <option value="2">Aménagement</option>
               </select>
@@ -431,7 +532,6 @@ const Prestations = () => {
         </div>
       )}
 
-      {/* Liste des factures */}
       <div className="bg-white shadow-md rounded overflow-hidden">
         {invoices.length === 0 ? (
           <p className="text-center py-4 text-gray-600">Aucune prestation disponible</p>
@@ -498,7 +598,6 @@ const Prestations = () => {
         )}
       </div>
 
-      {/* Affichage détaillé d'une facture */}
       {selectedInvoice && !showForm && (
         <div className="mt-8 bg-white shadow-md rounded px-8 pt-6 pb-8">
           <h2 className="text-2xl font-semibold mb-4">Détails de la prestation N°{selectedInvoice.numberInvoice}</h2>
@@ -506,10 +605,34 @@ const Prestations = () => {
             <p className="mb-2"><span className="font-semibold">ID:</span> {selectedInvoice.id}</p>
             <p className="mb-2"><span className="font-semibold">Date:</span> {formatDate(selectedInvoice.date)}</p>
             <p className="mb-2">
-              <span className="font-semibold">Client:</span> {selectedInvoice.customer ? selectedInvoice.customer.name : selectedInvoice.customerId}
+              <span className="font-semibold">Client:</span> 
+              {selectedInvoice.customer ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <p className="mb-2"><span className="font-semibold">Nom:</span> {selectedInvoice.customer.name}</p>
+              {selectedInvoice.customer.address && (
+                <p className="mb-2"><span className="font-semibold">Adresse:</span> {selectedInvoice.customer.street}</p>
+              )}
+              {selectedInvoice.customer.postalCode && (
+                <p className="mb-2"><span className="font-semibold">Code postal:</span> {selectedInvoice.customer.postalCode}</p>
+              )}
+              {selectedInvoice.customer.city && (
+                <p className="mb-2"><span className="font-semibold">Ville:</span> {selectedInvoice.customer.city}</p>
+              )}
+              {selectedInvoice.customer.phone && (
+                <p className="mb-2"><span className="font-semibold">Téléphone:</span> {selectedInvoice.customer.phone}</p>
+              )}
+              {selectedInvoice.customer.email && (
+                <p className="mb-2"><span className="font-semibold">Email:</span> {selectedInvoice.customer.email}</p>
+              )}
+              {selectedInvoice.customer.siret && (
+                <p className="mb-2"><span className="font-semibold">SIRET:</span> {selectedInvoice.customer.siret}</p>
+              )}
+            </div>
+          ) : (
+            <p>Aucune information client disponible</p>
+          )}
             </p>
             
-            {/* Affichage des services */}
             {selectedInvoice.associatedServices && selectedInvoice.associatedServices.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-xl font-semibold mb-2">Services:</h3>
@@ -521,7 +644,6 @@ const Prestations = () => {
               </div>
             )}
             
-            {/* Affichage des images si disponibles */}
             {selectedInvoice.pictures && selectedInvoice.pictures.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-xl font-semibold mb-2">Images:</h3>
@@ -535,7 +657,6 @@ const Prestations = () => {
               </div>
             )}
             
-            {/* Affichage du tagline si disponible */}
             {selectedInvoice.tagline && (
               <div className="mt-4">
                 <h3 className="text-xl font-semibold mb-2">Signature:</h3>
@@ -581,7 +702,6 @@ const Prestations = () => {
         </div>
       )}
 
-      {/* Formulaire d'envoi par email */}
       {showEmailForm && selectedInvoice && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
@@ -625,7 +745,6 @@ const Prestations = () => {
         </div>
       )}
       
-      {/* Modal de prévisualisation PDF */}
       {showPdfPreview && selectedInvoice && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">

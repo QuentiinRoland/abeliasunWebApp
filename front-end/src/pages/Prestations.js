@@ -17,6 +17,8 @@ const Prestations = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customers, setCustomers] = useState([])
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().substring(0, 10),
@@ -39,7 +41,6 @@ const Prestations = () => {
       setLoading(true);
       const data = await getServices();
       console.log("DONNÉES COMPLÈTES DES FACTURES:", JSON.stringify(data, null, 2));
-      // Vérifier spécifiquement la structure du customer dans les factures
       data.forEach(invoice => {
         if (invoice.customer) {
           console.log(`CUSTOMER DATA POUR FACTURE ${invoice.id}:`, invoice.customer);
@@ -261,6 +262,58 @@ const Prestations = () => {
     }
   };
 
+  const handleDownloadInvoicePDF = async (invoice) => {
+    try {
+      setIsGeneratingPDF(true);
+      
+      const pdfBlob = await new Promise((resolve, reject) => {
+        try {
+          const container = document.createElement('div');
+          container.style.display = 'none';
+          document.body.appendChild(container);
+          
+          const root = createRoot(container);
+          
+          root.render(
+            <BlobProvider document={<PrestationPDF invoice={invoice} />}>
+              {({ blob, loading, error }) => {
+                if (error) {
+                  reject(error);
+                  return null;
+                }
+                
+                if (!loading && blob) {
+                  setTimeout(() => {
+                    resolve(blob);
+                    root.unmount();
+                    container.remove();
+                  }, 0);
+                }
+                return null;
+              }}
+            </BlobProvider>
+          );
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(pdfBlob);
+      link.download = `prestation_${invoice.numberInvoice || 'sans_numero'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error("Erreur lors de la génération du PDF:", error);
+      setError("Impossible de générer le PDF. Veuillez réessayer.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+
   const handleSendEmail = async (e) => {
     e.preventDefault();
     if (!emailTo) {
@@ -437,6 +490,20 @@ const Prestations = () => {
                  </div>
               )}
             </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold"  htmlFor="employeeId">
+                Employé
+              </label>
+              <select className="shadow appearance-none border rounded w-fill py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+              type="number" 
+              id="employeeId" 
+              name="employeeid"
+              value={formData.employeeIds}
+              >
+                <option value="">Séléctionnez un employé</option>
+              </select>
+            </div>
             
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="serviceIds">
@@ -611,31 +678,31 @@ const Prestations = () => {
           <div className="border-t border-gray-200 pt-4">
             <p className="mb-2"><span className="font-semibold">ID:</span> {selectedInvoice.id}</p>
             <p className="mb-2"><span className="font-semibold">Date:</span> {formatDate(selectedInvoice.date)}</p>
-            <p className="mb-2">
+            <div className="mb-2">
               <span className="font-semibold">Client:</span> 
               {selectedInvoice.customer ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <p className="mb-2"><span className="font-semibold">Nom:</span> {selectedInvoice.customer.name}</p>
-              {selectedInvoice.customer.address && (
-                <p className="mb-2"><span className="font-semibold">Adresse:</span> {selectedInvoice.customer.street}</p>
-              )}
-              {selectedInvoice.customer.postalCode && (
-                <p className="mb-2"><span className="font-semibold">Code postal:</span> {selectedInvoice.customer.postalCode}</p>
-              )}
-              {selectedInvoice.customer.city && (
-                <p className="mb-2"><span className="font-semibold">Ville:</span> {selectedInvoice.customer.city}</p>
-              )}
-              {selectedInvoice.customer.phone && (
-                <p className="mb-2"><span className="font-semibold">Téléphone:</span> {selectedInvoice.customer.phone}</p>
-              )}
-              {selectedInvoice.customer.email && (
-                <p className="mb-2"><span className="font-semibold">Email:</span> {selectedInvoice.customer.email}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <p className="mb-2"><span className="font-semibold">Nom:</span> {selectedInvoice.customer.name}</p>
+                  {selectedInvoice.customer.address && (
+                    <p className="mb-2"><span className="font-semibold">Adresse:</span> {selectedInvoice.customer.street}</p>
+                  )}
+                  {selectedInvoice.customer.postalCode && (
+                    <p className="mb-2"><span className="font-semibold">Code postal:</span> {selectedInvoice.customer.postalCode}</p>
+                  )}
+                  {selectedInvoice.customer.city && (
+                    <p className="mb-2"><span className="font-semibold">Ville:</span> {selectedInvoice.customer.city}</p>
+                  )}
+                  {selectedInvoice.customer.phone && (
+                    <p className="mb-2"><span className="font-semibold">Téléphone:</span> {selectedInvoice.customer.phone}</p>
+                  )}
+                  {selectedInvoice.customer.email && (
+                    <p className="mb-2"><span className="font-semibold">Email:</span> {selectedInvoice.customer.email}</p>
+                  )}
+                </div>
+              ) : (
+                <p>Aucune information client disponible</p>
               )}
             </div>
-          ) : (
-            <p>Aucune information client disponible</p>
-          )}
-            </p>
             
             {selectedInvoice.associatedServices && selectedInvoice.associatedServices.length > 0 && (
               <div className="mt-4">
@@ -678,15 +745,12 @@ const Prestations = () => {
                 Fermer
               </button>
               
-              <PDFDownloadLink
-                document={<PrestationPDF invoice={selectedInvoice} />}
-                fileName={`prestation_${selectedInvoice.numberInvoice}.pdf`}
-                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              >
-                {({ blob, url, loading, error }) =>
-                  loading ? "Génération du PDF..." : "Télécharger PDF"
-                }
-              </PDFDownloadLink>
+              <button onClick={() => handleDownloadInvoicePDF(selectedInvoice)}
+                          className="bg-green-100 text-green-600 px-2 py-1 rounded hover:bg-green-200 focus:outline-none"
+                          title="Télécharger PDF"
+                          disabled={isGeneratingPDF}>
+              PDF
+              </button>
               
               <button 
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
